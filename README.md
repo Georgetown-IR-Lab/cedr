@@ -1,5 +1,5 @@
-# contextualized-reps-for-ranking
-Sean MacAvaney, Andrew Yates, Arman Cohan, Nazli Goharian. *Contextualized Word Representations for Document Re-Ranking*. To appear at SIGIR 2019 (short).
+# cedr
+Sean MacAvaney, Andrew Yates, Arman Cohan, Nazli Goharian. *CEDR: Contextualized Embeddings for Document Ranking*. To appear at SIGIR 2019 (short).
 
 Paper at: https://arxiv.org/abs/1904.07094
 
@@ -9,7 +9,7 @@ If you use this work, please cite as: [bibtex](https://smac.pub/bib/sigir2019-co
 ```
 @InProceedings{macavaney2019ContextualWR,
   author = {MacAvaney, Sean and Yates, Andrew and Cohan, Arman and Goharian, Nazli},
-  title = {Contextualized Word Representations for Document Re-Ranking},
+  title = {CEDR: Contextualized Embeddings for Document Ranking},
   booktitle = {SIGIR},
   year = {2019}
 }
