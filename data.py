@@ -98,6 +98,9 @@ def iter_valid_records(model, dataset, run, batch_size):
         if len(batch['query_id']) == batch_size:
             yield _pack_n_ship(batch)
             batch = {'query_id': [], 'doc_id': [], 'query_tok': [], 'doc_tok': []}
+    # final batch
+    if len(batch['query_id']) > 0:
+        yield _pack_n_ship(batch)
 
 
 def _iter_valid_records(model, dataset, run):
