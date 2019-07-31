@@ -67,14 +67,13 @@ def _iter_train_pairs(model, dataset, train_pairs, qrels):
             pos_ids = [did for did in train_pairs[qid] if qrels.get(qid, {}).get(did, 0) > 0]
             if len(pos_ids) == 0:
                 continue
-            random.shuffle(pos_ids)
-            pos_id = pos_ids[0]
+            pos_id = random.choice(pos_ids)
+            pos_ids_lookup = set(pos_ids)
             pos_ids = set(pos_ids)
-            neg_ids = [did for did in train_pairs[qid] if did not in pos_ids]
+            neg_ids = [did for did in train_pairs[qid] if did not in pos_ids_lookup]
             if len(neg_ids) == 0:
                 continue
-            random.shuffle(neg_ids)
-            neg_id = neg_ids[0]
+            neg_id = random.choice(neg_ids)
             query_tok = model.tokenize(ds_queries[qid])
             pos_doc = ds_docs.get(pos_id)
             neg_doc = ds_docs.get(neg_id)
