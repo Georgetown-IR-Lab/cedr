@@ -143,9 +143,11 @@ def _pad_crop(items, l):
 def _mask(items, l):
     result = []
     for item in items:
+        # needs padding (masked)
         if len(item) < l:
-            item = [1. for _ in item] + ([0.] * (l - len(item)))
+            mask = [1. for _ in item] + ([0.] * (l - len(item)))
+        # no padding (possible crop)
         if len(item) >= l:
-            item = [1. for _ in item[:l]]
-        result.append(item)
+            mask = [1. for _ in item[:l]]
+        result.append(mask)
     return torch.tensor(result).float().cuda()
