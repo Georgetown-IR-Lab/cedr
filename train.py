@@ -2,6 +2,7 @@ import os
 import argparse
 import subprocess
 import random
+import tempfile
 from tqdm import tqdm
 import torch
 import modeling
@@ -35,11 +36,12 @@ MODEL_MAP = {
 }
 
 
-def main(model, dataset, train_pairs, qrels_train, valid_run, qrels_valid, model_out_dir):
+def main(model, dataset, train_pairs, qrels_train, valid_run, qrels_valid, model_out_dir=None):
     '''
         Runs the training loop, controlled by the constants above
         Args:
-            model(torch.nn.model): One of the models in modelling.py
+            model(torch.nn.model or str): One of the models in modelling.py, 
+            or one of the keys of MODEL_MAP.
             dataset: A tuple containing two dictionaries, which contains the 
             text of documents and queries in both training and validation sets:
                 ({"q1" : "query text 1"}, {"d1" : "doct text 1"} )
@@ -49,10 +51,14 @@ def main(model, dataset, train_pairs, qrels_train, valid_run, qrels_valid, model
                 {"q1" : {"d1" : 2, "d2" : 0}}
             valid_run: Query document mappings for validation set, in same format as train_pairs.
             qrels_valid: A dictionary  containing qrels
-            model_out_dir: Location where to write the models. 
-
+            model_out_dir: Location where to write the models. If None, a temporary directoy is used.
     '''
     
+    if isinstance(model,str):
+        model = MODEL_MAP[model]().cuda()
+    if model_out_dir is None:
+        model_out_dir = tempfile.mkdtemp()
+
     params = [(k, v) for k, v in model.named_parameters() if v.requires_grad]
     non_bert_params = {'params': [v for k, v in params if not k.startswith('bert.')]}
     bert_params = {'params': [v for k, v in params if k.startswith('bert.')], 'lr': BERT_LR}
