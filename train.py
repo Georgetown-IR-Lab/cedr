@@ -86,7 +86,8 @@ def main(model, dataset, train_pairs, qrels_train, valid_run, qrels_valid, model
             break
         
     #load the final selected model for returning
-    model.load(os.path.join(model_out_dir, 'weights.p'))
+    if top_valid_score_epoch != epoch
+        model.load(os.path.join(model_out_dir, 'weights.p'))
     return (model, top_valid_score_epoch)
 
 
