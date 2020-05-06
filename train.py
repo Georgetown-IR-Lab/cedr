@@ -9,6 +9,14 @@ import data
 
 
 SEED = 42
+LR = 0.001
+BERT_LR = 2e-5
+MAX_EPOCH = 100
+BATCH_SIZE = 16
+BATCHES_PER_EPOCH = 32
+GRAD_ACC_SIZE = 2
+VALIDATION_METRIC = 'P.20'
+
 torch.manual_seed(SEED)
 torch.cuda.manual_seed_all(SEED)
 random.seed(SEED)
@@ -23,10 +31,7 @@ MODEL_MAP = {
 
 
 def main(model, dataset, train_pairs, qrels, valid_run, qrelf, model_out_dir):
-    LR = 0.001
-    BERT_LR = 2e-5
-    MAX_EPOCH = 100
-
+    
     params = [(k, v) for k, v in model.named_parameters() if v.requires_grad]
     non_bert_params = {'params': [v for k, v in params if not k.startswith('bert.')]}
     bert_params = {'params': [v for k, v in params if k.startswith('bert.')], 'lr': BERT_LR}
@@ -46,9 +51,7 @@ def main(model, dataset, train_pairs, qrels, valid_run, qrelf, model_out_dir):
 
 
 def train_iteration(model, optimizer, dataset, train_pairs, qrels):
-    BATCH_SIZE = 16
-    BATCHES_PER_EPOCH = 32
-    GRAD_ACC_SIZE = 2
+    
     total = 0
     model.train()
     total_loss = 0.
@@ -73,14 +76,12 @@ def train_iteration(model, optimizer, dataset, train_pairs, qrels):
 
 
 def validate(model, dataset, run, qrelf, epoch, model_out_dir):
-    VALIDATION_METRIC = 'P.20'
     runf = os.path.join(model_out_dir, f'{epoch}.run')
     run_model(model, dataset, run, runf)
     return trec_eval(qrelf, runf, VALIDATION_METRIC)
 
 
 def run_model(model, dataset, run, runf, desc='valid'):
-    BATCH_SIZE = 16
     rerank_run = {}
     with torch.no_grad(), tqdm(total=sum(len(r) for r in run.values()), ncols=80, desc=desc, leave=False) as pbar:
         model.eval()
