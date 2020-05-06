@@ -20,7 +20,8 @@ MAX_EPOCH = 100
 BATCH_SIZE = 16
 BATCHES_PER_EPOCH = 32
 GRAD_ACC_SIZE = 2
-VALIDATION_METRIC = 'P.20'
+#other possibilities: ndcg
+VALIDATION_METRIC = 'P_20'
 PATIENCE = 20 # how many epochs to wait for validation improvement
 
 torch.manual_seed(SEED)
@@ -84,7 +85,7 @@ def main(model, dataset, train_pairs, qrels_train, valid_run, qrels_valid, model
             print(f'no validation improvement since {top_valid_score_epoch}, early stopping', flush=True)
             break
         
-    #load the model for returning
+    #load the final selected model for returning
     model.load(os.path.join(model_out_dir, 'weights.p'))
     return (model, top_valid_score_epoch)
 
@@ -116,9 +117,13 @@ def train_iteration(model, optimizer, dataset, train_pairs, qrels):
 
 def validate(model, dataset, run, valid_qrels, epoch):
     run_scores = run_model(model, dataset, run)
-    trec_eval = pytrec_eval.RelevanceEvaluator(valid_qrels, {VALIDATION_METRIC})
+    metric = VALIDATION_METRIC
+    if metric.startswith("P_"):
+        metric = "P"
+    trec_eval = pytrec_eval.RelevanceEvaluator(valid_qrels, {metric})
     eval_scores = trec_eval.evaluate(run_scores)
-    return mean([d["VALIDATION_METRIC"] for d in eval_scores.values()])
+    print(eval_scores)
+    return mean([d[VALIDATION_METRIC] for d in eval_scores.values()])
 
 
 def run_model(model, dataset, run, desc='valid'):
