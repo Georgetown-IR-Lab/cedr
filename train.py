@@ -54,6 +54,7 @@ def main(model, dataset, train_pairs, qrels, valid_run, qrelf, model_out_dir):
         if top_valid_score is not None and epoch - top_valid_score_epoch > PATIENCE:
             print(f'no validation improvement since {top_valid_score_epoch}, early stopping', flush=True)
             break
+    return top_valid_score_epoch
 
 
 def train_iteration(model, optimizer, dataset, train_pairs, qrels):
