@@ -16,6 +16,7 @@ BATCH_SIZE = 16
 BATCHES_PER_EPOCH = 32
 GRAD_ACC_SIZE = 2
 VALIDATION_METRIC = 'P.20'
+PATIENCE = 20 # how many epochs to wait for validation improvement
 
 torch.manual_seed(SEED)
 torch.cuda.manual_seed_all(SEED)
@@ -39,6 +40,7 @@ def main(model, dataset, train_pairs, qrels, valid_run, qrelf, model_out_dir):
 
     epoch = 0
     top_valid_score = None
+    print(f'Starting training, upto {MAX_EPOCH} epochs, patience {PATIENCE} LR={LR} BERT_LR={BERT_LR}', flush=True)
     for epoch in range(MAX_EPOCH):
         loss = train_iteration(model, optimizer, dataset, train_pairs, qrels)
         print(f'train epoch={epoch} loss={loss}')
@@ -46,8 +48,13 @@ def main(model, dataset, train_pairs, qrels, valid_run, qrelf, model_out_dir):
         print(f'validation epoch={epoch} score={valid_score}')
         if top_valid_score is None or valid_score > top_valid_score:
             top_valid_score = valid_score
-            print('new top validation score, saving weights')
+            print('new top validation score, saving weights', flush=True)
             model.save(os.path.join(model_out_dir, 'weights.p'))
+            top_valid_score_epoch = epoch
+        if top_valid_score is not None and epoch - top_valid_score_epoch > PATIENCE:
+            print(f'no validation improvement since {top_valid_score_epoch}, early stopping', flush=True)
+            break
+    return top_valid_score_epoch
 
 
 def train_iteration(model, optimizer, dataset, train_pairs, qrels):
