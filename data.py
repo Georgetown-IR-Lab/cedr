@@ -66,12 +66,14 @@ def _iter_train_pairs(model, dataset, train_pairs, qrels):
         for qid in qids:
             pos_ids = [did for did in train_pairs[qid] if qrels.get(qid, {}).get(did, 0) > 0]
             if len(pos_ids) == 0:
+                tqdm.write("no positive labels for query %s " % qid)
                 continue
             pos_id = random.choice(pos_ids)
             pos_ids_lookup = set(pos_ids)
             pos_ids = set(pos_ids)
             neg_ids = [did for did in train_pairs[qid] if did not in pos_ids_lookup]
             if len(neg_ids) == 0:
+                tqdm.write("no negative labels for query %s " % qid)
                 continue
             neg_id = random.choice(neg_ids)
             query_tok = model.tokenize(ds_queries[qid])
