@@ -2,3 +2,4 @@ torch==1.1.0
 pytorch-pretrained-bert==0.6.2
 tqdm==4.19.5
 pytools==2018.5.2
+git+https://github.com/cvangysel/pytrec_eval.git
