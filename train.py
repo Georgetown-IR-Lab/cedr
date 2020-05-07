@@ -2,10 +2,15 @@ import os
 import argparse
 import subprocess
 import random
+import tempfile
 from tqdm import tqdm
 import torch
 import modeling
 import data
+import pytrec_eval
+from statistics import mean
+from collections import defaultdict
+
 
 
 SEED = 42
@@ -15,7 +20,8 @@ MAX_EPOCH = 100
 BATCH_SIZE = 16
 BATCHES_PER_EPOCH = 32
 GRAD_ACC_SIZE = 2
-VALIDATION_METRIC = 'P.20'
+#other possibilities: ndcg
+VALIDATION_METRIC = 'P_20'
 PATIENCE = 20 # how many epochs to wait for validation improvement
 
 torch.manual_seed(SEED)
@@ -31,8 +37,29 @@ MODEL_MAP = {
 }
 
 
-def main(model, dataset, train_pairs, qrels, valid_run, qrelf, model_out_dir):
+def main(model, dataset, train_pairs, qrels_train, valid_run, qrels_valid, model_out_dir=None):
+    '''
+        Runs the training loop, controlled by the constants above
+        Args:
+            model(torch.nn.model or str): One of the models in modelling.py, 
+            or one of the keys of MODEL_MAP.
+            dataset: A tuple containing two dictionaries, which contains the 
+            text of documents and queries in both training and validation sets:
+                ({"q1" : "query text 1"}, {"d1" : "doct text 1"} )
+            train_pairs: A dictionary containing query document mappings for the training set:
+                {"q1: : {"d1" : 1}}
+            qrels_train(dict): A dicationary containing training qrels, e.g.:
+                {"q1" : {"d1" : 2, "d2" : 0}}
+            valid_run: Query document mappings for validation set, in same format as train_pairs.
+            qrels_valid: A dictionary  containing qrels
+            model_out_dir: Location where to write the models. If None, a temporary directoy is used.
+    '''
     
+    if isinstance(model,str):
+        model = MODEL_MAP[model]().cuda()
+    if model_out_dir is None:
+        model_out_dir = tempfile.mkdtemp()
+
     params = [(k, v) for k, v in model.named_parameters() if v.requires_grad]
     non_bert_params = {'params': [v for k, v in params if not k.startswith('bert.')]}
     bert_params = {'params': [v for k, v in params if k.startswith('bert.')], 'lr': BERT_LR}
@@ -42,10 +69,13 @@ def main(model, dataset, train_pairs, qrels, valid_run, qrelf, model_out_dir):
     top_valid_score = None
     print(f'Starting training, upto {MAX_EPOCH} epochs, patience {PATIENCE} LR={LR} BERT_LR={BERT_LR}', flush=True)
     for epoch in range(MAX_EPOCH):
-        loss = train_iteration(model, optimizer, dataset, train_pairs, qrels)
+
+        loss = train_iteration(model, optimizer, dataset, train_pairs, qrels_train)
         print(f'train epoch={epoch} loss={loss}')
-        valid_score = validate(model, dataset, valid_run, qrelf, epoch, model_out_dir)
+
+        valid_score = validate(model, dataset, valid_run, qrels_valid, epoch)
         print(f'validation epoch={epoch} score={valid_score}')
+
         if top_valid_score is None or valid_score > top_valid_score:
             top_valid_score = valid_score
             print('new top validation score, saving weights', flush=True)
@@ -54,7 +84,11 @@ def main(model, dataset, train_pairs, qrels, valid_run, qrelf, model_out_dir):
         if top_valid_score is not None and epoch - top_valid_score_epoch > PATIENCE:
             print(f'no validation improvement since {top_valid_score_epoch}, early stopping', flush=True)
             break
-    return top_valid_score_epoch
+        
+    #load the final selected model for returning
+    if top_valid_score_epoch != epoch
+        model.load(os.path.join(model_out_dir, 'weights.p'))
+    return (model, top_valid_score_epoch)
 
 
 def train_iteration(model, optimizer, dataset, train_pairs, qrels):
@@ -82,14 +116,19 @@ def train_iteration(model, optimizer, dataset, train_pairs, qrels):
                 return total_loss
 
 
-def validate(model, dataset, run, qrelf, epoch, model_out_dir):
-    runf = os.path.join(model_out_dir, f'{epoch}.run')
-    run_model(model, dataset, run, runf)
-    return trec_eval(qrelf, runf, VALIDATION_METRIC)
+def validate(model, dataset, run, valid_qrels, epoch):
+    run_scores = run_model(model, dataset, run)
+    metric = VALIDATION_METRIC
+    if metric.startswith("P_"):
+        metric = "P"
+    trec_eval = pytrec_eval.RelevanceEvaluator(valid_qrels, {metric})
+    eval_scores = trec_eval.evaluate(run_scores)
+    print(eval_scores)
+    return mean([d[VALIDATION_METRIC] for d in eval_scores.values()])
 
 
-def run_model(model, dataset, run, runf, desc='valid'):
-    rerank_run = {}
+def run_model(model, dataset, run, desc='valid'):
+    rerank_run = defaultdict(dict)
     with torch.no_grad(), tqdm(total=sum(len(r) for r in run.values()), ncols=80, desc=desc, leave=False) as pbar:
         model.eval()
         for records in data.iter_valid_records(model, dataset, run, BATCH_SIZE):
@@ -98,22 +137,20 @@ def run_model(model, dataset, run, runf, desc='valid'):
                            records['doc_tok'],
                            records['doc_mask'])
             for qid, did, score in zip(records['query_id'], records['doc_id'], scores):
-                rerank_run.setdefault(qid, {})[did] = score.item()
+                rerank_run[qid][did] = score.item()
             pbar.update(len(records['query_id']))
+    return rerank_run
+    
+
+def write_run(rerank_run, runf):
+    '''
+        Utility method to write a file to disk. Now unused
+    '''
     with open(runf, 'wt') as runfile:
         for qid in rerank_run:
             scores = list(sorted(rerank_run[qid].items(), key=lambda x: (x[1], x[0]), reverse=True))
             for i, (did, score) in enumerate(scores):
                 runfile.write(f'{qid} 0 {did} {i+1} {score} run\n')
-
-
-def trec_eval(qrelf, runf, metric):
-    trec_eval_f = 'bin/trec_eval'
-    output = subprocess.check_output([trec_eval_f, '-m', metric, qrelf, runf]).decode().rstrip()
-    output = output.replace('\t', ' ').split('\n')
-    assert len(output) == 1
-    return float(output[0].split()[2])
-
 
 def main_cli():
     parser = argparse.ArgumentParser('CEDR model training and validation')
@@ -130,10 +167,12 @@ def main_cli():
     qrels = data.read_qrels_dict(args.qrels)
     train_pairs = data.read_pairs_dict(args.train_pairs)
     valid_run = data.read_run_dict(args.valid_run)
+
     if args.initial_bert_weights is not None:
         model.load(args.initial_bert_weights.name)
     os.makedirs(args.model_out_dir, exist_ok=True)
-    main(model, dataset, train_pairs, qrels, valid_run, args.qrels.name, args.model_out_dir)
+    # we use the same qrels object for both training and validation sets
+    main(model, dataset, train_pairs, qrels, valid_run, qrels, args.model_out_dir)
 
 
 if __name__ == '__main__':
