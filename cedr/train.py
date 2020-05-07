@@ -5,8 +5,8 @@ import random
 import tempfile
 from tqdm import tqdm
 import torch
-import modeling
-import data
+from . import modeling
+from . import data
 import pytrec_eval
 from statistics import mean
 from collections import defaultdict
@@ -86,7 +86,7 @@ def main(model, dataset, train_pairs, qrels_train, valid_run, qrels_valid, model
             break
         
     #load the final selected model for returning
-    if top_valid_score_epoch != epoch
+    if top_valid_score_epoch != epoch:
         model.load(os.path.join(model_out_dir, 'weights.p'))
     return (model, top_valid_score_epoch)
 
