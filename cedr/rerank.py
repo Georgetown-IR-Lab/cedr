@@ -1,6 +1,6 @@
 import argparse
-import train
-import data
+from . import train
+from . import data
 
 
 def main_cli():
