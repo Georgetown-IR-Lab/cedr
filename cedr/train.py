@@ -46,10 +46,13 @@ def main(model, dataset, train_pairs, qrels_train, valid_run, qrels_valid, model
             dataset: A tuple containing two dictionaries, which contains the 
             text of documents and queries in both training and validation sets:
                 ({"q1" : "query text 1"}, {"d1" : "doct text 1"} )
-            train_pairs: A dictionary containing query document mappings for the training set:
-                {"q1: : {"d1" : 1}}
-            qrels_train(dict): A dicationary containing training qrels, e.g.:
+            train_pairs: A dictionary containing query document mappings for the training set
+            (i.e, document to to generate pairs from). E.g.:
+                {"q1: : ["d1", "d2", "d3"]}
+            qrels_train(dict): A dicationary containing training qrels. Scores > 0 are considered
+            relevant. Missing scores are considered non-relevant. e.g.:
                 {"q1" : {"d1" : 2, "d2" : 0}}
+            If you want to generate pairs from qrels, you can pass in same object for qrels_train and train_pairs
             valid_run: Query document mappings for validation set, in same format as train_pairs.
             qrels_valid: A dictionary  containing qrels
             model_out_dir: Location where to write the models. If None, a temporary directoy is used.
