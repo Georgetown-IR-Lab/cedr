@@ -3,7 +3,7 @@ import argparse
 import subprocess
 import random
 import tempfile
-from tqdm import tqdm
+from tqdm.autonotebook import tqdm
 import torch
 from . import modeling
 from . import data
