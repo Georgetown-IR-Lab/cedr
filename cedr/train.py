@@ -5,8 +5,8 @@ import random
 import tempfile
 from tqdm import tqdm
 import torch
-from . import modeling
-from . import data
+import modeling
+import data
 import pytrec_eval
 from statistics import mean
 from collections import defaultdict
@@ -57,9 +57,12 @@ def main(model, dataset, train_pairs, qrels_train, valid_run, qrels_valid, model
             qrels_valid: A dictionary  containing qrels
             model_out_dir: Location where to write the models. If None, a temporary directoy is used.
     '''
-    
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
     if isinstance(model,str):
-        model = MODEL_MAP[model]().cuda()
+        model = MODEL_MAP[model]().to(device)
     if model_out_dir is None:
         model_out_dir = tempfile.mkdtemp()
 
@@ -75,7 +78,8 @@ def main(model, dataset, train_pairs, qrels_train, valid_run, qrels_valid, model
 
         loss = train_iteration(model, optimizer, dataset, train_pairs, qrels_train)
         print(f'train epoch={epoch} loss={loss}')
-
+        
+        
         valid_score = validate(model, dataset, valid_run, qrels_valid, epoch)
         print(f'validation epoch={epoch} score={valid_score}')
 
@@ -165,7 +169,8 @@ def main_cli():
     parser.add_argument('--initial_bert_weights', type=argparse.FileType('rb'))
     parser.add_argument('--model_out_dir')
     args = parser.parse_args()
-    model = MODEL_MAP[args.model]().cuda()
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = MODEL_MAP[args.model]().to(device)
     dataset = data.read_datafiles(args.datafiles)
     qrels = data.read_qrels_dict(args.qrels)
     train_pairs = data.read_pairs_dict(args.train_pairs)

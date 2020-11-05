@@ -1,7 +1,7 @@
 import argparse
-from . import train
-from . import data
-
+import train
+import data
+import torch
 
 def main_cli():
     parser = argparse.ArgumentParser('CEDR model re-ranking')
@@ -11,7 +11,8 @@ def main_cli():
     parser.add_argument('--model_weights', type=argparse.FileType('rb'))
     parser.add_argument('--out_path', type=argparse.FileType('wt'))
     args = parser.parse_args()
-    model = train.MODEL_MAP[args.model]().cuda()
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = train.MODEL_MAP[args.model]().to(device)
     dataset = data.read_datafiles(args.datafiles)
     run = data.read_run_dict(args.run)
     if args.model_weights is not None:

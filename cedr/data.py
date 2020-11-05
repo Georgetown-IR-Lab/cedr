@@ -2,6 +2,7 @@ import random
 from tqdm import tqdm
 import torch
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def read_datafiles(files):
     queries = {}
@@ -32,7 +33,7 @@ def read_qrels_dict(file):
 def read_run_dict(file):
     result = {}
     for line in tqdm(file, desc='loading run (by line)', leave=False):
-        qid, _, docid, rank, score, _ = line.split()
+        qid, _, docid, _, score, _ = line.strip("\n").split(" ")
         result.setdefault(qid, {})[docid] = float(score)
     return result
 
@@ -139,7 +140,7 @@ def _pad_crop(items, l):
         if len(item) > l:
             item = item[:l]
         result.append(item)
-    return torch.tensor(result).long().cuda()
+    return torch.tensor(result).long().to(device)
 
 
 def _mask(items, l):
@@ -152,4 +153,4 @@ def _mask(items, l):
         if len(item) >= l:
             mask = [1. for _ in item[:l]]
         result.append(mask)
-    return torch.tensor(result).float().cuda()
+    return torch.tensor(result).float().to(device)

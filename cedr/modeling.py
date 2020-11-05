@@ -2,7 +2,7 @@ from pytools import memoize_method
 import torch
 import torch.nn.functional as F
 import pytorch_pretrained_bert
-from . import modeling_util
+import modeling_util
 
 
 class BertRanker(torch.nn.Module):
